@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Udupi Division Guest House, Central GST</title>
+
+<style>
+body{font-family:Arial;background:#eef1f5;margin:0;padding:10px}
+h1,h2{text-align:center}
+.container{max-width:1100px;margin:auto}
+.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px}
+input,select,button{width:100%;padding:8px;margin-top:6px}
+button{background:#007bff;color:#fff;border:none;cursor:pointer}
+button:hover{background:#0056b3}
+.hidden{display:none}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{border:1px solid #ccc;padding:6px;text-align:center}
+th{background:#f0f0f0}
+.statusBox{padding:8px;margin-top:8px;border-radius:6px;background:#f9f9f9}
+.good{color:green;font-weight:bold}
+.bad{color:red;font-weight:bold}
+@media(min-width:600px){.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Udupi Division Guest House, Central GST</h1>
+
+<!-- LOGIN -->
+<div class="card" id="loginCard">
+<h2>Login</h2>
+<button onclick="loginGuest()">Guest Login</button>
+<hr>
+<input id="user" placeholder="Caretaker Username">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="loginCaretaker()">Caretaker Login</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<div class="card">
+<h2>Add Booking</h2>
+
+<form id="bookingForm" class="grid">
+
+<input id="guest" placeholder="Guest Name" required>
+
+<select id="department" required>
+<option value="">Department</option>
+<option>CBIC</option>
+<option>Others</option>
+</select>
+
+<input id="designation" placeholder="Designation" required>
+<input id="posting" placeholder="Place of Posting" required>
+
+<select id="bookingFor" required>
+<option value="">Booking For</option>
+<option>Self</option>
+<option>Family</option>
+<option>Relatives</option>
+<option>Friends</option>
+</select>
+
+<select id="roomType" required>
+<option value="">Room Type</option>
+<option>Normal</option>
+<option>Suite</option>
+</select>
+
+<select id="roomCount" required>
+<option value="">No of Rooms</option>
+<option>1</option><option>2</option><option>3</option>
+</select>
+
+<input type="date" id="checkin" required>
+<input type="date" id="checkout" required>
+
+<div class="statusBox" id="availability">Select dates to see availability</div>
+
+<button type="submit">Add Booking</button>
+</form>
+</div>
+
+<div class="card">
+<h2>Bookings</h2>
+<button onclick="window.print()">Print Register</button>
+<table>
+<thead>
+<tr>
+<th>Guest</th><th>Dept</th><th>Designation</th><th>Posting</th>
+<th>For</th><th>Rooms</th><th>Type</th><th>In</th><th>Out</th><th>Action</th>
+</tr>
+</thead>
+<tbody id="bookingTable"></tbody>
+</table>
+</div>
+
+</div>
+</div>
+
+<script>
+const NORMAL=["N1","N2","N3","N4"];
+const SUITE=["S1"];
+let bookings=JSON.parse(localStorage.getItem("bookings"))||[];
+let caretaker=false;
+
+function loginGuest(){
+  loginCard.classList.add("hidden");
+  app.classList.remove("hidden");
+  render();
+}
+function loginCaretaker(){
+  if(user.value==="udupi" && pass.value==="12345"){
+    caretaker=true;loginGuest();
+  } else alert("Invalid credentials");
+}
+
+function isAvailable(room,i,o){
+  return !bookings.some(b=>b.rooms.includes(room)&&!(o<=b.checkin||i>=b.checkout));
+}
+
+function availabilityStatus(){
+  if(!checkin.value||!checkout.value||checkin.value>=checkout.value){
+    availability.innerHTML="Select valid dates";
+    return;
+  }
+  const pool=roomType.value==="Suite"?SUITE:NORMAL;
+  const free=pool.filter(r=>isAvailable(r,checkin.value,checkout.value));
+  availability.innerHTML=
+    `<span class="good">Available: ${free.length}</span> | 
+     <span class="bad">Booked: ${pool.length-free.length}</span>`;
+}
+
+["checkin","checkout","roomType"].forEach(id=>{
+  document.getElementById(id).addEventListener("change",availabilityStatus);
+});
+
+bookingForm.onsubmit=e=>{
+  e.preventDefault();
+  if(checkin.value>=checkout.value){alert("Invalid dates");return;}
+  const pool=roomType.value==="Suite"?SUITE:NORMAL;
+  const free=pool.filter(r=>isAvailable(r,checkin.value,checkout.value));
+  if(free.length<+roomCount.value){alert("Rooms not available");return;}
+
+  bookings.push({
+    guest:guest.value,department:department.value,
+    designation:designation.value,posting:posting.value,
+    bookingFor:bookingFor.value,type:roomType.value,
+    rooms:free.slice(0,+roomCount.value),
+    checkin:checkin.value,checkout:checkout.value
+  });
+
+  localStorage.setItem("bookings",JSON.stringify(bookings));
+  bookingForm.reset();
+  availability.innerHTML="Select dates to see availability";
+  render();
+};
+
+function render(){
+  bookingTable.innerHTML="";
+  bookings.forEach((b,i)=>{
+    bookingTable.innerHTML+=`
+    <tr>
+    <td>${b.guest}</td><td>${b.department}</td><td>${b.designation}</td>
+    <td>${b.posting}</td><td>${b.bookingFor}</td>
+    <td>${b.rooms.join(",")}</td><td>${b.type}</td>
+    <td>${b.checkin}</td><td>${b.checkout}</td>
+    <td>${caretaker?`<button onclick="del(${i})">Delete</button>`:""}</td>
+    </tr>`;
+  });
+}
+
+function del(i){
+  if(confirm("Delete booking?")){
+    bookings.splice(i,1);
+    localStorage.setItem("bookings",JSON.stringify(bookings));
+    render();
+  }
+}
+</script>
+
+</body>
+</html>
