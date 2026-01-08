@@ -13,7 +13,7 @@ h1,h2{text-align:center}
 input,select,button{width:100%;padding:8px;margin-top:6px}
 button{background:#007bff;color:#fff;border:none;cursor:pointer}
 button:hover{background:#0056b3}
-.hidden{display:none}
+.hidden{display:none!important} /* FIXED */
 .topbar{display:flex;justify-content:space-between;align-items:center}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
@@ -25,6 +25,20 @@ th{background:#f0f0f0}
 @media print {
   button,#loginCard,#availability,#cancelGuest,.topbar {display:none!important;}
   table{font-size:12px}
+}
+
+/* POPUP */
+.modal{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+}
+.modal-box{
+  background:#fff;padding:20px;border-radius:10px;
+  text-align:center;max-width:320px;width:90%;
+}
+.tick{
+  font-size:48px;color:green;
 }
 </style>
 </head>
@@ -42,16 +56,13 @@ th{background:#f0f0f0}
 <!-- LOGIN -->
 <div class="card" id="loginCard">
   <h2>Login</h2>
-
-  <button onclick="loginGuest()">Guest Login</button>
-  <br><br>
-
+  <button onclick="loginGuest()">Guest Login</button><br><br>
   <button onclick="showCaretaker()">Caretaker Login</button>
 
   <div id="caretakerFields" class="hidden">
     <hr>
-    <input id="user" placeholder="Caretaker Username" autocomplete="off">
-    <input id="pass" type="password" placeholder="Password" autocomplete="new-password">
+    <input id="user" placeholder="Caretaker Username">
+    <input id="pass" type="password" placeholder="Password">
     <button onclick="loginCaretaker()">Login as Caretaker</button>
   </div>
 </div>
@@ -78,10 +89,8 @@ th{background:#f0f0f0}
 
 <select id="bookingFor" required>
 <option value="">Booking For</option>
-<option>Self</option>
-<option>Family</option>
-<option>Relatives</option>
-<option>Friends</option>
+<option>Self</option><option>Family</option>
+<option>Relatives</option><option>Friends</option>
 </select>
 
 <select id="roomType" required>
@@ -92,9 +101,7 @@ th{background:#f0f0f0}
 
 <select id="roomCount" required>
 <option value="">No of Rooms</option>
-<option>1</option>
-<option>2</option>
-<option>3</option>
+<option>1</option><option>2</option><option>3</option>
 </select>
 
 <input type="date" id="checkin" required>
@@ -115,17 +122,9 @@ th{background:#f0f0f0}
 <table>
 <thead>
 <tr>
-<th>Guest</th>
-<th>Mobile</th>
-<th>Department</th>
-<th>Designation</th>
-<th>Posting</th>
-<th>Booking For</th>
-<th>Rooms</th>
-<th>Type</th>
-<th>Check-in</th>
-<th>Check-out</th>
-<th>Action</th>
+<th>Guest</th><th>Mobile</th><th>Department</th><th>Designation</th>
+<th>Posting</th><th>Booking For</th><th>Rooms</th>
+<th>Type</th><th>Check-in</th><th>Check-out</th><th>Action</th>
 </tr>
 </thead>
 <tbody id="bookingTable"></tbody>
@@ -146,6 +145,16 @@ th{background:#f0f0f0}
 </div>
 
 </div>
+</div>
+
+<!-- SUCCESS POPUP -->
+<div id="successModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="tick">✔</div>
+    <h3>Booking Confirmed</h3>
+    <p id="successMsg"></p>
+    <button onclick="closePopup()">OK</button>
+  </div>
 </div>
 
 <script>
@@ -171,7 +180,7 @@ function loginGuest(){
 }
 
 function loginCaretaker(){
-  if(user.value==="udupi" && pass.value==="12345"){
+  if(user.value==="udupi"&&pass.value==="12345"){
     caretaker=true;
     roleText.innerText="Caretaker Mode";
     topbar.classList.remove("hidden");
@@ -199,67 +208,62 @@ function updateAvailability(){
   if(!checkin.value||!checkout.value||checkin.value>=checkout.value)return;
   const pool=roomType.value==="Suite"?SUITE:NORMAL;
   const free=pool.filter(r=>isAvailable(r,checkin.value,checkout.value));
-  availability.innerHTML=
-    `<span class="good">Available: ${free.length}</span> |
-     <span class="bad">Booked: ${pool.length-free.length}</span>`;
+  availability.innerHTML=`<span class="good">Available: ${free.length}</span> |
+  <span class="bad">Booked: ${pool.length-free.length}</span>`;
 }
-
-["checkin","checkout","roomType"].forEach(id=>{
-  document.getElementById(id).addEventListener("change",updateAvailability);
-});
+["checkin","checkout","roomType"].forEach(id=>document.getElementById(id).onchange=updateAvailability);
 
 bookingForm.onsubmit=e=>{
   e.preventDefault();
-  if(checkin.value>=checkout.value) return alert("Invalid dates");
+  if(checkin.value>=checkout.value)return alert("Invalid dates");
 
   const pool=roomType.value==="Suite"?SUITE:NORMAL;
   const free=pool.filter(r=>isAvailable(r,checkin.value,checkout.value));
-  if(free.length<+roomCount.value) return alert("Rooms not available");
+  if(free.length<+roomCount.value)return alert("Rooms not available");
 
   bookings.push({
-    guest:guest.value,
-    mobile:mobile.value,
-    department:department.value,
-    designation:designation.value,
-    posting:posting.value,
-    bookingFor:bookingFor.value,
-    type:roomType.value,
-    rooms:free.slice(0,+roomCount.value),
-    checkin:checkin.value,
-    checkout:checkout.value
+    guest:guest.value,mobile:mobile.value,
+    department:department.value,designation:designation.value,
+    posting:posting.value,bookingFor:bookingFor.value,
+    type:roomType.value,rooms:free.slice(0,+roomCount.value),
+    checkin:checkin.value,checkout:checkout.value
   });
 
   localStorage.setItem("bookings",JSON.stringify(bookings));
-  bookingForm.reset();
-  availability.innerHTML="";
+
+  successMsg.innerHTML=`
+    <strong>${guest.value}</strong><br>
+    ${designation.value}<br><br>
+    <b>Check-in:</b> ${checkin.value}<br>
+    <b>Check-out:</b> ${checkout.value}
+  `;
+  successModal.classList.remove("hidden");
+
+  bookingForm.reset();availability.innerHTML="";
   render();
 };
+
+function closePopup(){
+  successModal.classList.add("hidden");
+}
 
 function render(){
   bookingTable.innerHTML="";
   bookings.forEach((b,i)=>{
     bookingTable.innerHTML+=`
     <tr>
-    <td>${b.guest}</td>
-    <td>${b.mobile}</td>
-    <td>${b.department}</td>
-    <td>${b.designation}</td>
-    <td>${b.posting}</td>
-    <td>${b.bookingFor}</td>
-    <td>${b.rooms.join(",")}</td>
-    <td>${b.type}</td>
-    <td>${b.checkin}</td>
-    <td>${b.checkout}</td>
+    <td>${b.guest}</td><td>${b.mobile}</td><td>${b.department}</td>
+    <td>${b.designation}</td><td>${b.posting}</td><td>${b.bookingFor}</td>
+    <td>${b.rooms.join(",")}</td><td>${b.type}</td>
+    <td>${b.checkin}</td><td>${b.checkout}</td>
     <td>${caretaker?`<button onclick="deleteBooking(${i})">Cancel</button>`:""}</td>
     </tr>`;
   });
 
   cancelList.innerHTML="";
   cancelReq.forEach(m=>{
-    cancelList.innerHTML+=`
-      <li>${m}
-        <button onclick="approveCancel('${m}')">Approve</button>
-      </li>`;
+    cancelList.innerHTML+=`<li>${m}
+    <button onclick="approveCancel('${m}')">Approve</button></li>`;
   });
 }
 
@@ -273,8 +277,8 @@ function deleteBooking(i){
 
 function requestCancel(){
   const m=cancelMobile.value;
-  if(!bookings.some(b=>b.mobile===m)) return alert("No booking found");
-  if(cancelReq.includes(m)) return alert("Already requested");
+  if(!bookings.some(b=>b.mobile===m))return alert("No booking found");
+  if(cancelReq.includes(m))return alert("Already requested");
   cancelReq.push(m);
   localStorage.setItem("cancelReq",JSON.stringify(cancelReq));
   alert("Cancellation request submitted");
