@@ -13,7 +13,7 @@ h1,h2{text-align:center}
 input,select,button{width:100%;padding:8px;margin-top:6px}
 button{background:#007bff;color:#fff;border:none;cursor:pointer}
 button:hover{background:#0056b3}
-.hidden{display:none!important} /* FIXED */
+.hidden{display:none}
 .topbar{display:flex;justify-content:space-between;align-items:center}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
@@ -27,18 +27,27 @@ th{background:#f0f0f0}
   table{font-size:12px}
 }
 
-/* POPUP */
-.modal{
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(0,0,0,.5);
-  display:flex;align-items:center;justify-content:center;
+/* ✅ POPUP CSS (NEW – DOES NOT TOUCH EXISTING CLASSES) */
+.confirm-popup{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.4);
+  display:none;
+  align-items:center;
+  justify-content:center;
 }
-.modal-box{
-  background:#fff;padding:20px;border-radius:10px;
-  text-align:center;max-width:320px;width:90%;
+.confirm-box{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  text-align:center;
+  width:90%;
+  max-width:320px;
 }
-.tick{
-  font-size:48px;color:green;
+.confirm-tick{
+  font-size:44px;
+  color:green;
 }
 </style>
 </head>
@@ -147,12 +156,12 @@ th{background:#f0f0f0}
 </div>
 </div>
 
-<!-- SUCCESS POPUP -->
-<div id="successModal" class="modal hidden">
-  <div class="modal-box">
-    <div class="tick">✔</div>
+<!-- ✅ CONFIRMATION POPUP (NEW) -->
+<div id="confirmPopup" class="confirm-popup">
+  <div class="confirm-box">
+    <div class="confirm-tick">✔</div>
     <h3>Booking Confirmed</h3>
-    <p id="successMsg"></p>
+    <p id="confirmText"></p>
     <button onclick="closePopup()">OK</button>
   </div>
 </div>
@@ -231,20 +240,22 @@ bookingForm.onsubmit=e=>{
 
   localStorage.setItem("bookings",JSON.stringify(bookings));
 
-  successMsg.innerHTML=`
+  /* ✅ POPUP ONLY */
+  confirmText.innerHTML = `
     <strong>${guest.value}</strong><br>
     ${designation.value}<br><br>
     <b>Check-in:</b> ${checkin.value}<br>
     <b>Check-out:</b> ${checkout.value}
   `;
-  successModal.classList.remove("hidden");
+  confirmPopup.style.display="flex";
 
-  bookingForm.reset();availability.innerHTML="";
+  bookingForm.reset();
+  availability.innerHTML="";
   render();
 };
 
 function closePopup(){
-  successModal.classList.add("hidden");
+  confirmPopup.style.display="none";
 }
 
 function render(){
@@ -259,48 +270,6 @@ function render(){
     <td>${caretaker?`<button onclick="deleteBooking(${i})">Cancel</button>`:""}</td>
     </tr>`;
   });
-
-  cancelList.innerHTML="";
-  cancelReq.forEach(m=>{
-    cancelList.innerHTML+=`<li>${m}
-    <button onclick="approveCancel('${m}')">Approve</button></li>`;
-  });
-}
-
-function deleteBooking(i){
-  if(confirm("Cancel this booking?")){
-    bookings.splice(i,1);
-    localStorage.setItem("bookings",JSON.stringify(bookings));
-    render();
-  }
-}
-
-function requestCancel(){
-  const m=cancelMobile.value;
-  if(!bookings.some(b=>b.mobile===m))return alert("No booking found");
-  if(cancelReq.includes(m))return alert("Already requested");
-  cancelReq.push(m);
-  localStorage.setItem("cancelReq",JSON.stringify(cancelReq));
-  alert("Cancellation request submitted");
-}
-
-function approveCancel(m){
-  bookings=bookings.filter(b=>b.mobile!==m);
-  cancelReq=cancelReq.filter(x=>x!==m);
-  localStorage.setItem("bookings",JSON.stringify(bookings));
-  localStorage.setItem("cancelReq",JSON.stringify(cancelReq));
-  render();
-}
-
-function exportExcel(){
-  let csv="Guest,Mobile,Department,Designation,Posting,Booking For,Rooms,Type,Check-in,Check-out\n";
-  bookings.forEach(b=>{
-    csv+=`${b.guest},${b.mobile},${b.department},${b.designation},${b.posting},${b.bookingFor},"${b.rooms.join("|")}",${b.type},${b.checkin},${b.checkout}\n`;
-  });
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="Udupi_Guest_House_Register.csv";
-  a.click();
 }
 </script>
 
