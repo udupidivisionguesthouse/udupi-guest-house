@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Udupi Division Guest House, Central GST</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body{font-family:Arial;background:#eef1f5;margin:0;padding:10px}
@@ -14,20 +14,10 @@ input,select,button{width:100%;padding:8px;margin-top:6px}
 button{background:#007bff;color:#fff;border:none;cursor:pointer}
 button:hover{background:#0056b3}
 .hidden{display:none}
-.logout{position:fixed;top:15px;right:15px;border-radius:50%;width:40px;height:40px}
-
+.logout{position:fixed;top:15px;right:15px;width:40px;height:40px;border-radius:50%}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
 th{background:#f0f0f0}
-
-.gallery{display:grid;grid-template-columns:1fr;gap:15px}
-.gallery img{width:100%;height:220px;object-fit:cover;border-radius:8px}
-.gallery-title{text-align:center;font-weight:bold}
-
-@media(min-width:600px){
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.gallery{grid-template-columns:1fr 1fr}
-}
 </style>
 </head>
 
@@ -58,27 +48,10 @@ th{background:#f0f0f0}
 <!-- BOOKING FORM -->
 <div class="card">
 <h2>Add Booking</h2>
-<form id="bookingForm" class="grid">
+<form id="bookingForm">
 
 <input id="guest" placeholder="Guest Name" required>
 <input id="mobile" placeholder="Mobile Number" required>
-
-<select id="department" required>
-<option value="">Department</option>
-<option>CBIC</option>
-<option>Others</option>
-</select>
-
-<input id="designation" placeholder="Designation" required>
-<input id="posting" placeholder="Place of Posting" required>
-
-<select id="bookingFor" required>
-<option value="">Booking For</option>
-<option>Self</option>
-<option>Family</option>
-<option>Relatives</option>
-<option>Friends</option>
-</select>
 
 <select id="roomType" required>
 <option value="">Room Type</option>
@@ -108,8 +81,7 @@ th{background:#f0f0f0}
 <table>
 <thead>
 <tr>
-<th>Guest</th><th>Mobile</th><th>Dept</th><th>Designation</th>
-<th>Posting</th><th>For</th><th>Rooms</th>
+<th>Guest</th><th>Mobile</th><th>Rooms</th>
 <th>Type</th><th>Check-in</th><th>Check-out</th><th>Action</th>
 </tr>
 </thead>
@@ -119,34 +91,9 @@ th{background:#f0f0f0}
 
 </div>
 
-<!-- GALLERY -->
-<div class="card">
-<h2>Room & Facility Gallery</h2>
-
-<h3>Normal Rooms</h3>
-<div class="gallery">
-<div><img src="images/nb.jpg"><div class="gallery-title">Bedroom</div></div>
-<div><img src="images/nbr.jpg"><div class="gallery-title">Bathroom</div></div>
-</div>
-
-<h3>Suite Room</h3>
-<div class="gallery">
-<div><img src="images/sb.jpg"><div class="gallery-title">Bedroom</div></div>
-<div><img src="images/sh.jpg"><div class="gallery-title">Hall</div></div>
-</div>
-
-<h3>Common Facilities</h3>
-<div class="gallery">
-<div><img src="images/cd.jpg"><div class="gallery-title">Dining</div></div>
-<div><img src="images/ck.jpg"><div class="gallery-title">Kitchen</div></div>
-</div>
-</div>
-
-</div>
-
 <script>
-const TOTAL_NORMAL = 4;
-const TOTAL_SUITE = 1;
+const NORMAL_ROOMS = ["N1","N2","N3","N4"];
+const SUITE_ROOMS = ["S1"];
 
 let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
 let isCaretaker = false;
@@ -156,7 +103,7 @@ function showCaretaker(){
 }
 
 function guestLogin(){
-  isCaretaker = false;
+  isCaretaker=false;
   loginCard.classList.add("hidden");
   app.classList.remove("hidden");
   caretakerView.classList.add("hidden");
@@ -166,15 +113,13 @@ function guestLogin(){
 
 function caretakerLogin(){
   if(user.value==="udupi" && pass.value==="12345"){
-    isCaretaker = true;
+    isCaretaker=true;
     loginCard.classList.add("hidden");
     app.classList.remove("hidden");
     caretakerView.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
     renderRegister();
-  } else {
-    alert("Invalid credentials");
-  }
+  } else alert("Invalid credentials");
 }
 
 function logout(){
@@ -185,20 +130,31 @@ function logout(){
   logoutBtn.classList.add("hidden");
 }
 
-function roomsBooked(type, inDate, outDate){
-  return bookings.filter(b =>
-    b.type===type &&
-    !(outDate<=b.checkin || inDate>=b.checkout)
-  ).reduce((sum,b)=>sum+Number(b.rooms),0);
+function overlaps(a,b,c,d){
+  return !(d<=a || c>=b);
+}
+
+function availableRooms(type, ci, co){
+  const pool = type==="Suite" ? [...SUITE_ROOMS] : [...NORMAL_ROOMS];
+  bookings.forEach(b=>{
+    if(b.type===type && overlaps(ci,co,b.checkin,b.checkout)){
+      b.rooms.forEach(r=>{
+        const i = pool.indexOf(r);
+        if(i>-1) pool.splice(i,1);
+      });
+    }
+  });
+  return pool;
 }
 
 function updateAvailability(){
-  if(!checkin.value || !checkout.value || checkin.value>=checkout.value) return;
-  const total = roomType.value==="Suite" ? TOTAL_SUITE : TOTAL_NORMAL;
-  const booked = roomsBooked(roomType.value, checkin.value, checkout.value);
-  const available = total - booked;
-  availability.innerHTML = available>0
-    ? `Available rooms: <b>${available}</b>`
+  if(!roomType.value || !checkin.value || !checkout.value || checkin.value>=checkout.value){
+    availability.innerHTML="";
+    return;
+  }
+  const free = availableRooms(roomType.value, checkin.value, checkout.value);
+  availability.innerHTML = free.length
+    ? `Available rooms: <b>${free.length}</b>`
     : `<span style="color:red">No rooms available</span>`;
 }
 
@@ -206,34 +162,30 @@ function updateAvailability(){
   document.getElementById(id).addEventListener("change",updateAvailability);
 });
 
-bookingForm.onsubmit = e => {
+bookingForm.onsubmit = e =>{
   e.preventDefault();
   if(checkin.value>=checkout.value) return alert("Invalid dates");
 
-  const total = roomType.value==="Suite" ? TOTAL_SUITE : TOTAL_NORMAL;
-  const booked = roomsBooked(roomType.value, checkin.value, checkout.value);
-
-  if(booked + Number(roomCount.value) > total){
+  const free = availableRooms(roomType.value, checkin.value, checkout.value);
+  if(free.length < Number(roomCount.value)){
     alert("Rooms not available for selected dates");
     return;
   }
 
+  const assigned = free.slice(0, Number(roomCount.value));
+
   bookings.push({
     guest:guest.value,
     mobile:mobile.value,
-    department:department.value,
-    designation:designation.value,
-    posting:posting.value,
-    bookingFor:bookingFor.value,
-    rooms:Number(roomCount.value),
     type:roomType.value,
+    rooms:assigned,
     checkin:checkin.value,
     checkout:checkout.value
   });
 
   localStorage.setItem("bookings",JSON.stringify(bookings));
 
-  alert("✅ Booking confirmed successfully");
+  alert("✅ Booking confirmed\nRooms: " + assigned.join(", "));
   bookingForm.reset();
   availability.innerHTML="";
   renderRegister();
@@ -244,10 +196,12 @@ function renderRegister(){
   bookings.forEach((b,i)=>{
     register.innerHTML += `
     <tr>
-      <td>${b.guest}</td><td>${b.mobile}</td><td>${b.department}</td>
-      <td>${b.designation}</td><td>${b.posting}</td><td>${b.bookingFor}</td>
-      <td>${b.rooms}</td><td>${b.type}</td>
-      <td>${b.checkin}</td><td>${b.checkout}</td>
+      <td>${b.guest}</td>
+      <td>${b.mobile}</td>
+      <td>${b.rooms.join(",")}</td>
+      <td>${b.type}</td>
+      <td>${b.checkin}</td>
+      <td>${b.checkout}</td>
       <td>${isCaretaker ? `<button onclick="cancel(${i})">Cancel</button>` : ""}</td>
     </tr>`;
   });
@@ -261,6 +215,8 @@ function cancel(i){
     updateAvailability();
   }
 }
+
+renderRegister();
 </script>
 
 </body>
