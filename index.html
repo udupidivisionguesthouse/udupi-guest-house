@@ -15,13 +15,13 @@ button{background:#007bff;color:#fff;border:none;cursor:pointer}
 button:hover{background:#0056b3}
 .hidden{display:none}
 
-/* TOP RIGHT LOGOUT */
+/* Logout button */
 .logout-btn{
   position:fixed;
   top:15px;
   right:15px;
-  width:42px;
-  height:42px;
+  width:40px;
+  height:40px;
   border-radius:50%;
   font-size:14px;
   padding:0;
@@ -29,12 +29,9 @@ button:hover{background:#0056b3}
   z-index:1000;
 }
 
-/* TABLE */
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
 th{background:#f0f0f0}
-.good{color:green;font-weight:bold}
-.bad{color:red;font-weight:bold}
 
 /* Gallery */
 .gallery{
@@ -51,7 +48,6 @@ th{background:#f0f0f0}
 .gallery-title{
   text-align:center;
   font-weight:bold;
-  margin-top:5px;
 }
 
 @media(min-width:600px){
@@ -60,10 +56,7 @@ th{background:#f0f0f0}
 }
 
 @media print{
-  button,#loginCard,#availability,#cancelGuest,.logout-btn,.gallery{
-    display:none!important;
-  }
-  table{font-size:12px}
+  button,.logout-btn,.gallery{display:none!important}
 }
 </style>
 </head>
@@ -134,8 +127,6 @@ th{background:#f0f0f0}
 <input type="date" id="checkin" required>
 <input type="date" id="checkout" required>
 
-<div id="availability"></div>
-
 <button type="submit">Add Booking</button>
 </form>
 </div>
@@ -143,37 +134,30 @@ th{background:#f0f0f0}
 <!-- CARETAKER REGISTER -->
 <div class="card hidden" id="caretakerView">
 <h2>Booking Register</h2>
-<button onclick="exportExcel()">Export Excel</button>
-<button onclick="window.print()">Export PDF</button>
 
 <table>
 <thead>
 <tr>
-<th>Guest</th><th>Mobile</th><th>Department</th><th>Designation</th>
-<th>Posting</th><th>Booking For</th><th>Rooms</th>
-<th>Type</th><th>Check-in</th><th>Check-out</th><th>Action</th>
+<th>Guest</th>
+<th>Mobile</th>
+<th>Department</th>
+<th>Designation</th>
+<th>Posting</th>
+<th>Booking For</th>
+<th>Rooms</th>
+<th>Type</th>
+<th>Check-in</th>
+<th>Check-out</th>
+<th>Action</th>
 </tr>
 </thead>
 <tbody id="bookingTable"></tbody>
 </table>
 </div>
 
-<!-- GUEST CANCELLATION -->
-<div class="card" id="cancelGuest">
-<h2>Request Cancellation (Guest)</h2>
-<input id="cancelMobile" placeholder="Enter Mobile Number">
-<button onclick="requestCancel()">Request Cancellation</button>
 </div>
 
-<!-- CARETAKER CANCELLATION REQUESTS -->
-<div class="card hidden" id="cancelRequests">
-<h2>Cancellation Requests</h2>
-<ul id="cancelList"></ul>
-</div>
-
-</div>
-
-<!-- ROOM & FACILITY GALLERY (NOW BELOW LOGIN & APP) -->
+<!-- GALLERY -->
 <div class="card">
 <h2>Room & Facility Gallery</h2>
 
@@ -189,8 +173,6 @@ th{background:#f0f0f0}
   </div>
 </div>
 
-<hr>
-
 <h3>Suite Room (1 Room)</h3>
 <div class="gallery">
   <div>
@@ -202,8 +184,6 @@ th{background:#f0f0f0}
     <div class="gallery-title">Suite Room – Hall</div>
   </div>
 </div>
-
-<hr>
 
 <h3>Common Facilities</h3>
 <div class="gallery">
@@ -221,34 +201,33 @@ th{background:#f0f0f0}
 </div>
 
 <script>
-const NORMAL=["N1","N2","N3","N4"];
-const SUITE=["S1"];
-let bookings=JSON.parse(localStorage.getItem("bookings"))||[];
-let cancelReq=JSON.parse(localStorage.getItem("cancelReq"))||[];
-let caretaker=false;
+let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
+let caretaker = false;
 
-function showCaretaker(){caretakerFields.classList.remove("hidden");}
+function showCaretaker(){
+  caretakerFields.classList.remove("hidden");
+}
 
 function loginGuest(){
   caretaker=false;
   loginCard.classList.add("hidden");
   app.classList.remove("hidden");
   caretakerView.classList.add("hidden");
-  cancelRequests.classList.add("hidden");
   logoutBtn.style.display="block";
   render();
 }
 
 function loginCaretaker(){
-  if(user.value==="udupi"&&pass.value==="12345"){
+  if(user.value==="udupi" && pass.value==="12345"){
     caretaker=true;
     loginCard.classList.add("hidden");
     app.classList.remove("hidden");
     caretakerView.classList.remove("hidden");
-    cancelRequests.classList.remove("hidden");
     logoutBtn.style.display="block";
     render();
-  } else alert("Invalid credentials");
+  } else {
+    alert("Invalid credentials");
+  }
 }
 
 function logout(){
@@ -259,94 +238,68 @@ function logout(){
   logoutBtn.style.display="none";
 }
 
-function isAvailable(room,i,o){
-  return !bookings.some(b=>b.rooms.includes(room)&&!(o<=b.checkin||i>=b.checkout));
-}
-
-function updateAvailability(){
-  if(!checkin.value||!checkout.value||checkin.value>=checkout.value)return;
-  const pool=roomType.value==="Suite"?SUITE:NORMAL;
-  const free=pool.filter(r=>isAvailable(r,checkin.value,checkout.value));
-  availability.innerHTML=`<span class="good">Available: ${free.length}</span> |
-  <span class="bad">Booked: ${pool.length-free.length}</span>`;
-}
-["checkin","checkout","roomType"].forEach(id=>{
-  document.getElementById(id).addEventListener("change",updateAvailability);
-});
-
-bookingForm.onsubmit=e=>{
+bookingForm.addEventListener("submit",function(e){
   e.preventDefault();
-  if(checkin.value>=checkout.value)return alert("Invalid dates");
-  const pool=roomType.value==="Suite"?SUITE:NORMAL;
-  const free=pool.filter(r=>isAvailable(r,checkin.value,checkout.value));
-  if(free.length<+roomCount.value)return alert("Rooms not available");
+
+  if(checkin.value >= checkout.value){
+    alert("Check-out date must be after check-in date");
+    return;
+  }
 
   bookings.push({
-    guest:guest.value,mobile:mobile.value,
-    department:department.value,designation:designation.value,
-    posting:posting.value,bookingFor:bookingFor.value,
-    type:roomType.value,rooms:free.slice(0,+roomCount.value),
-    checkin:checkin.value,checkout:checkout.value
+    guest: guest.value,
+    mobile: mobile.value,
+    department: department.value,
+    designation: designation.value,
+    posting: posting.value,
+    bookingFor: bookingFor.value,
+    rooms: roomCount.value,
+    type: roomType.value,
+    checkin: checkin.value,
+    checkout: checkout.value
   });
-  localStorage.setItem("bookings",JSON.stringify(bookings));
-  bookingForm.reset();availability.innerHTML="";
+
+  localStorage.setItem("bookings", JSON.stringify(bookings));
+
+  alert(
+    "✅ Room booked successfully!\n\n" +
+    "Guest: " + guest.value + "\n" +
+    "Room Type: " + roomType.value + "\n" +
+    "No. of Rooms: " + roomCount.value + "\n" +
+    "Check-in: " + checkin.value + "\n" +
+    "Check-out: " + checkout.value
+  );
+
+  bookingForm.reset();
   render();
-};
+});
 
 function render(){
   bookingTable.innerHTML="";
   bookings.forEach((b,i)=>{
     bookingTable.innerHTML+=`
     <tr>
-      <td>${b.guest}</td><td>${b.mobile}</td><td>${b.department}</td>
-      <td>${b.designation}</td><td>${b.posting}</td><td>${b.bookingFor}</td>
-      <td>${b.rooms.join(",")}</td><td>${b.type}</td>
-      <td>${b.checkin}</td><td>${b.checkout}</td>
-      <td>${caretaker?`<button onclick="deleteBooking(${i})">Cancel</button>`:""}</td>
+      <td>${b.guest}</td>
+      <td>${b.mobile}</td>
+      <td>${b.department}</td>
+      <td>${b.designation}</td>
+      <td>${b.posting}</td>
+      <td>${b.bookingFor}</td>
+      <td>${b.rooms}</td>
+      <td>${b.type}</td>
+      <td>${b.checkin}</td>
+      <td>${b.checkout}</td>
+      <td>${caretaker ? `<button onclick="removeBooking(${i})">Cancel</button>` : ""}</td>
     </tr>`;
-  });
-
-  cancelList.innerHTML="";
-  cancelReq.forEach(m=>{
-    cancelList.innerHTML+=`<li>${m}
-      <button onclick="approveCancel('${m}')">Approve</button></li>`;
   });
 }
 
-function deleteBooking(i){
+function removeBooking(i){
   if(confirm("Cancel this booking?")){
     bookings.splice(i,1);
     localStorage.setItem("bookings",JSON.stringify(bookings));
     render();
   }
-}
-
-function requestCancel(){
-  const m=cancelMobile.value;
-  if(!bookings.some(b=>b.mobile===m))return alert("No booking found");
-  if(cancelReq.includes(m))return alert("Already requested");
-  cancelReq.push(m);
-  localStorage.setItem("cancelReq",JSON.stringify(cancelReq));
-  alert("Cancellation request submitted");
-}
-
-function approveCancel(m){
-  bookings=bookings.filter(b=>b.mobile!==m);
-  cancelReq=cancelReq.filter(x=>x!==m);
-  localStorage.setItem("bookings",JSON.stringify(bookings));
-  localStorage.setItem("cancelReq",JSON.stringify(cancelReq));
-  render();
-}
-
-function exportExcel(){
-  let csv="Guest,Mobile,Department,Designation,Posting,Booking For,Rooms,Type,Check-in,Check-out\n";
-  bookings.forEach(b=>{
-    csv+=`${b.guest},${b.mobile},${b.department},${b.designation},${b.posting},${b.bookingFor},"${b.rooms.join("|")}",${b.type},${b.checkin},${b.checkout}\n`;
-  });
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="Udupi_Guest_House_Register.csv";
-  a.click();
 }
 </script>
 
